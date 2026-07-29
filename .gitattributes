@@ -50,4 +50,5 @@ registry/**/*.html linguist-vendored
 
 # Korean caption demo fonts (OFL TTF/WOFF2 can exceed 500KB non-LFS guard)
 examples/ko-captions/fonts/**/*.ttf filter=lfs diff=lfs merge=lfs -text
+examples/ko-captions/fonts/**/*.woff filter=lfs diff=lfs merge=lfs -text
 examples/ko-captions/fonts/**/*.woff2 filter=lfs diff=lfs merge=lfs -text

@@ -420,17 +420,16 @@ function injectCommonHangulPatches(html, meta, font, baseFonts) {
 
 /**
  * CapCut white fill + crisp black outline.
- * Outline ONLY on word spans (not the line container) — stacking both
- * created a muddy soft black smudge. All shadow blur radii are 0.
+ * Stroke-only (no text-shadow) — multi-offset shadows read as a soft black
+ * smudge at 720p encode, and clip at transform/overflow edges.
  */
 const CAPCUT_OUTLINE_CSS = `
       .caption-line {
         color: #ffffff !important;
         font-weight: 700 !important;
-        -webkit-text-stroke: 0 !important;
         text-shadow: none !important;
         filter: none !important;
-        padding: 18px 28px !important;
+        padding: 24px 32px !important;
         box-sizing: content-box !important;
         overflow: visible !important;
         max-width: none !important;
@@ -439,21 +438,12 @@ const CAPCUT_OUTLINE_CSS = `
         color: #ffffff !important;
         font-weight: 700 !important;
         display: inline-block !important;
-        -webkit-text-stroke: 0 !important;
-        paint-order: fill;
+        text-shadow: none !important;
         filter: none !important;
-        padding: 0 2px !important;
+        padding: 0 3px !important;
         overflow: visible !important;
-        /* Hard outline only — blur radius always 0 */
-        text-shadow:
-          -2px -2px 0 #000,
-          -2px 0 0 #000,
-          -2px 2px 0 #000,
-          0 -2px 0 #000,
-          0 2px 0 #000,
-          2px -2px 0 #000,
-          2px 0 0 #000,
-          2px 2px 0 #000 !important;
+        -webkit-text-stroke: 4px #000000;
+        paint-order: stroke fill;
       }
 `;
 
@@ -647,9 +637,9 @@ function patchBlackOutline(html, meta, font) {
   const slimFont = { ...font, fontSize: BLACK_OUTLINE_FONT_SIZE };
   let out = patchWeightShiftBase(html, meta, slimFont);
   const longPlanJson = JSON.stringify(BLACK_OUTLINE_PHRASE_PLAN);
-  // Stage can be wide; cut width is much tighter so outline+padding never clips
-  const safeDesignW = 1680;
-  const lineInsetDesign = 220; // side pad + outline + line padding
+  // Design-space (1920-wide) stage; cut inset leaves room for 4px stroke + pad
+  const safeDesignW = 1600;
+  const lineInsetDesign = 200;
 
   // Kill upstream soft shadow / clip before our outline CSS
   out = out.replace(
@@ -660,10 +650,18 @@ function patchBlackOutline(html, meta, font) {
     /#black-outline\s*\{([^}]*)overflow:\s*hidden;/,
     "#black-outline {$1overflow: visible;",
   );
-  // Extra room for outline in width math (outline is outside glyph box)
+  out = out.replace(
+    /will-change:\s*transform;/g,
+    "will-change: auto;",
+  );
+  out = out.replace(
+    /backface-visibility:\s*hidden;/g,
+    "backface-visibility: visible;",
+  );
+  // Extra room for stroke outside glyph box
   out = out.replace(
     /var FONT_WIDTH_SAFETY = [^;]+;/,
-    "var FONT_WIDTH_SAFETY = 1.22;",
+    "var FONT_WIDTH_SAFETY = 1.28;",
   );
 
   out = out.replace(
@@ -684,11 +682,11 @@ function patchBlackOutline(html, meta, font) {
         left: 50% !important;
         transform: translate(-50%, -50%) !important;
         width: ${safeDesignW}px !important;
-        height: 220px !important;
+        height: 280px !important;
       }
       .caption-group {
         width: ${safeDesignW}px !important;
-        height: 220px !important;
+        height: 280px !important;
       }
       .caption-copy {
         max-width: none !important;
@@ -786,7 +784,7 @@ function patchBlackOutline(html, meta, font) {
   // Stage: padded width + mid-frame. Set measure font BEFORE makeGroups.
   out = out.replace(
     /var stageHeight = Math\.round\(380 \* layout\.fontScale\);/,
-    "var stageHeight = Math.round(220 * layout.fontScale);",
+    "var stageHeight = Math.round(280 * layout.fontScale);",
   );
   out = out.replace(
     /SAFE_ZONE_WIDTH = Math\.round\(1400 \* layout\.scaleX\);/,

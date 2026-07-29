@@ -642,8 +642,9 @@ function patchBlackOutline(html, meta, font) {
   const slimFont = { ...font, fontSize: BLACK_OUTLINE_FONT_SIZE };
   let out = patchWeightShiftBase(html, meta, slimFont);
   const longPlanJson = JSON.stringify(BLACK_OUTLINE_PHRASE_PLAN);
-  // ~84% of 1920 design width → side padding so text never kisses 9:16 edges
-  const safeDesignW = 1520;
+  // ~73% of 1920 design width + extra room for CapCut black stroke/shadow
+  const safeDesignW = 1400;
+  const lineInsetDesign = 96; // side pad + outline bleed (~4px stroke × scale)
 
   out = out.replace(
     "</style>",
@@ -750,7 +751,7 @@ function patchBlackOutline(html, meta, font) {
   );
   out = out.replace(
     /MAX_LINE_WIDTH = SAFE_ZONE_WIDTH - Math\.round\(40 \* layout\.scaleX\);/,
-    "MAX_LINE_WIDTH = SAFE_ZONE_WIDTH - Math.round(64 * layout.scaleX);",
+    `MAX_LINE_WIDTH = SAFE_ZONE_WIDTH - Math.round(${lineInsetDesign} * layout.scaleX);`,
   );
   out = out.replace(
     /stage\.style\.bottom = Math\.round\(72 \* layout\.scaleY\) \+ "px";/,
@@ -767,7 +768,12 @@ function patchBlackOutline(html, meta, font) {
   out = out.replace(
     /measureContext\.font = "700 " \+ CAPTION_FONT_SIZE \+ "px " \+ [^;]+;/,
     `measureContext.font = "700 " + CAPTION_FONT_SIZE + "px ${font.cssFamily}";
-          MAX_LINE_WIDTH = SAFE_ZONE_WIDTH - Math.round(64 * layout.scaleX);`,
+          MAX_LINE_WIDTH = SAFE_ZONE_WIDTH - Math.round(${lineInsetDesign} * layout.scaleX);`,
+  );
+  // Outline/stroke is invisible to canvas measureText — bump safety so cuts leave margin
+  out = out.replace(
+    /var FONT_WIDTH_SAFETY = [^;]+;/,
+    "var FONT_WIDTH_SAFETY = 1.12;",
   );
 
   // Force bold; skip weight-shift animation (single-weight Hangul faces)

@@ -418,24 +418,48 @@ function injectCommonHangulPatches(html, meta, font, baseFonts) {
   return out;
 }
 
-/** CapCut white fill + hard black stroke only (no soft blur / drop shadow). */
+/**
+ * CapCut white fill + crisp black outline.
+ * Use 0-blur hard offsets only (any blur-radius shadow = soft black smudge).
+ * Avoid fat -webkit-text-stroke alone — Chromium AA reads as a soft halo.
+ */
 const CAPCUT_OUTLINE_CSS = `
       .caption-line,
       .caption-line span {
         color: #ffffff !important;
         font-weight: 700 !important;
-        /* Stroke-only outline — text-shadow halo removed (was the soft black blur) */
-        -webkit-text-stroke: 5px #000000;
-        paint-order: stroke fill;
-        text-shadow: none !important;
+        -webkit-text-stroke: 0 !important;
+        paint-order: fill;
         filter: none !important;
+        /* Hard outline only — every blur radius is 0 */
+        text-shadow:
+          -3px -3px 0 #000,
+          -3px -1px 0 #000,
+          -3px 0 0 #000,
+          -3px 1px 0 #000,
+          -3px 3px 0 #000,
+          -1px -3px 0 #000,
+          -1px 3px 0 #000,
+          0 -3px 0 #000,
+          0 3px 0 #000,
+          1px -3px 0 #000,
+          1px 3px 0 #000,
+          3px -3px 0 #000,
+          3px -1px 0 #000,
+          3px 0 0 #000,
+          3px 1px 0 #000,
+          3px 3px 0 #000 !important;
       }
       .caption-line {
-        /* Room so stroke is not clipped at line ends */
-        padding: 12px 18px !important;
+        padding: 16px 22px !important;
         box-sizing: content-box !important;
         overflow: visible !important;
         max-width: none !important;
+      }
+      .caption-line span {
+        display: inline-block !important;
+        padding: 0 1px !important;
+        overflow: visible !important;
       }
 `;
 
@@ -633,7 +657,7 @@ function patchBlackOutline(html, meta, font) {
   const safeDesignW = 1560;
   const lineInsetDesign = 140; // side pad + stroke + line padding so ends never clip
 
-  // Kill upstream soft shadow before our outline CSS
+  // Kill upstream soft shadow / clip before our outline CSS
   out = out.replace(
     /text-shadow:\s*0 2px 4px rgba\(0,\s*0,\s*0,\s*0\.3\);/g,
     "text-shadow: none;",
@@ -641,6 +665,11 @@ function patchBlackOutline(html, meta, font) {
   out = out.replace(
     /#black-outline\s*\{([^}]*)overflow:\s*hidden;/,
     "#black-outline {$1overflow: visible;",
+  );
+  // Extra room for outline in width math (outline is outside glyph box)
+  out = out.replace(
+    /var FONT_WIDTH_SAFETY = [^;]+;/,
+    "var FONT_WIDTH_SAFETY = 1.22;",
   );
 
   out = out.replace(
@@ -778,11 +807,6 @@ function patchBlackOutline(html, meta, font) {
     /measureContext\.font = "700 " \+ CAPTION_FONT_SIZE \+ "px " \+ [^;]+;/,
     `measureContext.font = "700 " + CAPTION_FONT_SIZE + "px ${font.cssFamily}";
           MAX_LINE_WIDTH = SAFE_ZONE_WIDTH - Math.round(${lineInsetDesign} * layout.scaleX);`,
-  );
-  // Outline/stroke is invisible to canvas measureText — bump safety so cuts leave margin
-  out = out.replace(
-    /var FONT_WIDTH_SAFETY = [^;]+;/,
-    "var FONT_WIDTH_SAFETY = 1.18;",
   );
 
   // Force bold; skip weight-shift animation (single-weight Hangul faces)

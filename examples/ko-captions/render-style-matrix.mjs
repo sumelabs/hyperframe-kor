@@ -420,46 +420,40 @@ function injectCommonHangulPatches(html, meta, font, baseFonts) {
 
 /**
  * CapCut white fill + crisp black outline.
- * Use 0-blur hard offsets only (any blur-radius shadow = soft black smudge).
- * Avoid fat -webkit-text-stroke alone — Chromium AA reads as a soft halo.
+ * Outline ONLY on word spans (not the line container) — stacking both
+ * created a muddy soft black smudge. All shadow blur radii are 0.
  */
 const CAPCUT_OUTLINE_CSS = `
-      .caption-line,
-      .caption-line span {
+      .caption-line {
         color: #ffffff !important;
         font-weight: 700 !important;
         -webkit-text-stroke: 0 !important;
-        paint-order: fill;
+        text-shadow: none !important;
         filter: none !important;
-        /* Hard outline only — every blur radius is 0 */
-        text-shadow:
-          -3px -3px 0 #000,
-          -3px -1px 0 #000,
-          -3px 0 0 #000,
-          -3px 1px 0 #000,
-          -3px 3px 0 #000,
-          -1px -3px 0 #000,
-          -1px 3px 0 #000,
-          0 -3px 0 #000,
-          0 3px 0 #000,
-          1px -3px 0 #000,
-          1px 3px 0 #000,
-          3px -3px 0 #000,
-          3px -1px 0 #000,
-          3px 0 0 #000,
-          3px 1px 0 #000,
-          3px 3px 0 #000 !important;
-      }
-      .caption-line {
-        padding: 16px 22px !important;
+        padding: 18px 28px !important;
         box-sizing: content-box !important;
         overflow: visible !important;
         max-width: none !important;
       }
       .caption-line span {
+        color: #ffffff !important;
+        font-weight: 700 !important;
         display: inline-block !important;
-        padding: 0 1px !important;
+        -webkit-text-stroke: 0 !important;
+        paint-order: fill;
+        filter: none !important;
+        padding: 0 2px !important;
         overflow: visible !important;
+        /* Hard outline only — blur radius always 0 */
+        text-shadow:
+          -2px -2px 0 #000,
+          -2px 0 0 #000,
+          -2px 2px 0 #000,
+          0 -2px 0 #000,
+          0 2px 0 #000,
+          2px -2px 0 #000,
+          2px 0 0 #000,
+          2px 2px 0 #000 !important;
       }
 `;
 
@@ -653,9 +647,9 @@ function patchBlackOutline(html, meta, font) {
   const slimFont = { ...font, fontSize: BLACK_OUTLINE_FONT_SIZE };
   let out = patchWeightShiftBase(html, meta, slimFont);
   const longPlanJson = JSON.stringify(BLACK_OUTLINE_PHRASE_PLAN);
-  // Safe zone wide enough for stroke padding; cut width is tighter than stage
-  const safeDesignW = 1560;
-  const lineInsetDesign = 140; // side pad + stroke + line padding so ends never clip
+  // Stage can be wide; cut width is much tighter so outline+padding never clips
+  const safeDesignW = 1680;
+  const lineInsetDesign = 220; // side pad + outline + line padding
 
   // Kill upstream soft shadow / clip before our outline CSS
   out = out.replace(
@@ -697,12 +691,16 @@ function patchBlackOutline(html, meta, font) {
         height: 220px !important;
       }
       .caption-copy {
-        max-width: ${safeDesignW}px !important;
+        max-width: none !important;
         overflow: visible !important;
       }
       .caption-line {
         font-size: ${BLACK_OUTLINE_FONT_SIZE}px !important;
         max-width: none !important;
+      }
+      .caption-line,
+      .caption-copy {
+        width: max-content !important;
       }
     </style>`,
   );

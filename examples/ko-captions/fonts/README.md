@@ -11,6 +11,9 @@ redistribute with this fork. No CapCut-exclusive / paid fonts.
 | `black-han-sans` | Black Han Sans             | Impact / slam                | `black-han-sans/`          |
 | `jua`            | Jua                        | Soft cute rounded            | `jua/`                     |
 | `dunggeunmo`     | NeoDunggeunmo (DungGeunMo) | Pixel / retro                | `dunggeunmo/`              |
+| `bagel-fat-one`  | Bagel Fat One              | Fat rounded CapCut cute      | `bagel-fat-one/`           |
+| `dongle`         | Dongle Bold                | Playful rounded display      | `dongle/`                  |
+| `gasoek-one`     | Gasoek One                 | Ultra-thick impact           | `gasoek-one/`              |
 | `nanum-pen`      | Nanum Pen Script           | Handwritten                  | `nanum-pen/`               |
 | `gowun-dodum`    | Gowun Dodum                | Soft editorial               | `gowun-dodum/`             |
 

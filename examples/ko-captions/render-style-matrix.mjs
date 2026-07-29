@@ -592,13 +592,64 @@ function patchWeightShiftBase(html, meta, font) {
 }
 
 function patchBlackOutline(html, meta, font) {
-  let out = patchWeightShiftBase(html, meta, font);
-  // CapCut outline look
-  out = out.replace("</style>", `${CAPCUT_OUTLINE_CSS}\n    </style>`);
-  // Force bold on both lines; skip weight-shift animation (single-weight Hangul faces)
+  // Smaller face so each phrase stays one line; layout centered horizontally,
+  // vertically ~midway between bottom-third (old) and true center (~64% from top).
+  const singleLineFont = Math.round(font.fontSize * 0.68);
+  const slimFont = { ...font, fontSize: singleLineFont };
+  let out = patchWeightShiftBase(html, meta, slimFont);
+
+  // CapCut outline look + centered single-line stage
+  out = out.replace(
+    "</style>",
+    `${CAPCUT_OUTLINE_CSS}
+      /* black-outline: centered one-liner, raised toward mid-frame */
+      .safe-zone {
+        bottom: auto !important;
+        top: 64% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        height: 160px !important;
+      }
+      .caption-group {
+        height: 160px !important;
+      }
+    </style>`,
+  );
+
+  // Force single line (no 2-line wrap)
+  out = out.replace(
+    /function splitLines\(words\) \{[\s\S]*?return \[[\s\S]*?\]\.filter\(function \(line\) \{ return line\.words\.length; \}\);\n        \}/,
+    `function splitLines(words) {
+          return [{ words: words, startIndex: 0 }];
+        }`,
+  );
+  // Fallback if the injected splitLines shape differs
+  if (!out.includes("return [{ words: words, startIndex: 0 }];")) {
+    out = out.replace(
+      /function splitLines\(words\) \{[\s\S]*?\n        \}/,
+      `function splitLines(words) {
+          return [{ words: words, startIndex: 0 }];
+        }`,
+    );
+  }
+
+  // Stage position/size in hfBuild
+  out = out.replace(
+    /var stageHeight = Math\.round\(380 \* layout\.fontScale\);/,
+    "var stageHeight = Math.round(160 * layout.fontScale);",
+  );
+  out = out.replace(
+    /stage\.style\.bottom = Math\.round\(72 \* layout\.scaleY\) \+ "px";/,
+    `stage.style.bottom = "auto";
+          stage.style.top = "64%";
+          stage.style.left = "50%";
+          stage.style.transform = "translate(-50%, -50%)";`,
+  );
+
+  // Force bold; skip weight-shift animation (single-weight Hangul faces)
   out = out.replace(
     /lineEl\.style\.fontWeight = lineIndex === 0 \? FONT_WEIGHT_BOLD : FONT_WEIGHT_LIGHT;/,
-    'lineEl.style.fontWeight = FONT_WEIGHT_BOLD;',
+    "lineEl.style.fontWeight = FONT_WEIGHT_BOLD;",
   );
   out = out.replace(
     /if \(group\.lines\.length === 2\) \{[\s\S]*?switchTime,\n              \);\n            \}/,

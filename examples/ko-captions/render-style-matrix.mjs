@@ -702,6 +702,13 @@ function patchBlackOutline(html, meta, font) {
       .caption-copy {
         width: max-content !important;
       }
+      /* Transform layers clip text-shadow outlines in Chromium — kill them */
+      .caption-group {
+        will-change: auto !important;
+        backface-visibility: visible !important;
+        transform: none !important;
+        transform-origin: 50% 50% !important;
+      }
     </style>`,
   );
 
@@ -815,6 +822,19 @@ function patchBlackOutline(html, meta, font) {
   out = out.replace(
     /if \(group\.lines\.length === 2\) \{[\s\S]*?switchTime,\n              \);\n            \}/,
     "/* black-outline: keep constant bold; no weight shift */",
+  );
+  // Opacity-only entrance — scale/transform clips outline ends
+  out = out.replace(
+    /tl\.set\(groupEl, \{ opacity: 0, scale: 0\.85 \}, visibleStart\);/,
+    "tl.set(groupEl, { opacity: 0, scale: 1 }, visibleStart);",
+  );
+  out = out.replace(
+    /\{\s*opacity: 1,\s*scale: 1,\s*duration: ENTRY_DURATION,\s*ease: "power3\.out",\s*force3D: true\s*\}/,
+    '{ opacity: 1, duration: ENTRY_DURATION, ease: "power2.out", force3D: false }',
+  );
+  out = out.replace(
+    /transform: translateZ\(0\);/g,
+    "/* no translateZ — avoids outline clip */",
   );
   out = out.replace(
     /data-composition-id="caption-weight-shift"/,

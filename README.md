@@ -1,3 +1,9 @@
+> **Sume Labs fork** of [`heygen-com/hyperframes`](https://github.com/heygen-com/hyperframes) — Korean (Hangul) caption adaptations for talking-head / short-form video.
+>
+> - Example: [`examples/ko-captions/`](examples/ko-captions/)
+> - Guide: [`docs/guides/korean-captions.md`](docs/guides/korean-captions.md)
+> - Upstream sync: `git fetch upstream && git merge upstream/main`
+
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/logo/dark.svg">

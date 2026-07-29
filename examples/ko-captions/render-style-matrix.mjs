@@ -418,37 +418,30 @@ function injectCommonHangulPatches(html, meta, font, baseFonts) {
   return out;
 }
 
-/** CapCut white fill + thick black outline (multi-layer shadow) + soft drop shadow. */
+/** CapCut white fill + thick black outline only (no soft blur halo). */
 const CAPCUT_OUTLINE_CSS = `
-      .caption-line {
-        color: #ffffff !important;
-        font-weight: 700 !important;
-        -webkit-text-stroke: 2.5px #000000;
-        paint-order: stroke fill;
-        /* Multi-layer outline — more reliable than stroke alone on Hangul */
-        text-shadow:
-          -4px -4px 0 #000,
-          -4px -2px 0 #000,
-          -4px 0 0 #000,
-          -4px 2px 0 #000,
-          -4px 4px 0 #000,
-          -2px -4px 0 #000,
-          -2px 4px 0 #000,
-          0 -4px 0 #000,
-          0 4px 0 #000,
-          2px -4px 0 #000,
-          2px 4px 0 #000,
-          4px -4px 0 #000,
-          4px -2px 0 #000,
-          4px 0 0 #000,
-          4px 2px 0 #000,
-          4px 4px 0 #000,
-          0 8px 18px rgba(0, 0, 0, 0.55) !important;
-      }
+      .caption-line,
       .caption-line span {
         color: #ffffff !important;
-        -webkit-text-stroke: 2.5px #000000;
+        font-weight: 700 !important;
+        -webkit-text-stroke: 3px #000000;
         paint-order: stroke fill;
+        /* Hard outline only — no soft black glow/blur behind text */
+        text-shadow:
+          -3px -3px 0 #000,
+          -3px 0 0 #000,
+          -3px 3px 0 #000,
+          0 -3px 0 #000,
+          0 3px 0 #000,
+          3px -3px 0 #000,
+          3px 0 0 #000,
+          3px 3px 0 #000 !important;
+      }
+      .caption-line {
+        /* Room so stroke is not clipped at line ends */
+        padding: 10px 14px !important;
+        box-sizing: border-box !important;
+        overflow: visible !important;
       }
 `;
 
@@ -642,26 +635,32 @@ function patchBlackOutline(html, meta, font) {
   const slimFont = { ...font, fontSize: BLACK_OUTLINE_FONT_SIZE };
   let out = patchWeightShiftBase(html, meta, slimFont);
   const longPlanJson = JSON.stringify(BLACK_OUTLINE_PHRASE_PLAN);
-  // ~73% of 1920 design width + extra room for CapCut black stroke/shadow
-  const safeDesignW = 1400;
-  const lineInsetDesign = 96; // side pad + outline bleed (~4px stroke × scale)
+  // Safe zone wide enough for stroke padding; cut width is tighter than stage
+  const safeDesignW = 1560;
+  const lineInsetDesign = 140; // side pad + stroke + line padding so ends never clip
 
   out = out.replace(
     "</style>",
     `${CAPCUT_OUTLINE_CSS}
-      /* black-outline: centered, mid-frame, padded width */
+      /* black-outline: centered, mid-frame; overflow visible so stroke isn't clipped */
+      #black-outline,
+      .caption-layer,
+      .safe-zone,
+      .caption-group,
+      .caption-copy {
+        overflow: visible !important;
+      }
       .safe-zone {
         bottom: auto !important;
         top: 64% !important;
         left: 50% !important;
         transform: translate(-50%, -50%) !important;
         width: ${safeDesignW}px !important;
-        height: 180px !important;
-        overflow: hidden !important;
+        height: 200px !important;
       }
       .caption-group {
         width: ${safeDesignW}px !important;
-        height: 180px !important;
+        height: 200px !important;
       }
       .caption-copy,
       .caption-line {
@@ -669,7 +668,6 @@ function patchBlackOutline(html, meta, font) {
       }
       .caption-line {
         font-size: ${BLACK_OUTLINE_FONT_SIZE}px !important;
-        overflow: hidden !important;
       }
     </style>`,
   );
@@ -743,7 +741,7 @@ function patchBlackOutline(html, meta, font) {
   // Stage: padded width + mid-frame. Set measure font BEFORE makeGroups.
   out = out.replace(
     /var stageHeight = Math\.round\(380 \* layout\.fontScale\);/,
-    "var stageHeight = Math.round(180 * layout.fontScale);",
+    "var stageHeight = Math.round(200 * layout.fontScale);",
   );
   out = out.replace(
     /SAFE_ZONE_WIDTH = Math\.round\(1400 \* layout\.scaleX\);/,
@@ -773,7 +771,7 @@ function patchBlackOutline(html, meta, font) {
   // Outline/stroke is invisible to canvas measureText — bump safety so cuts leave margin
   out = out.replace(
     /var FONT_WIDTH_SAFETY = [^;]+;/,
-    "var FONT_WIDTH_SAFETY = 1.12;",
+    "var FONT_WIDTH_SAFETY = 1.18;",
   );
 
   // Force bold; skip weight-shift animation (single-weight Hangul faces)

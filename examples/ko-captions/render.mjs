@@ -2,9 +2,15 @@
 /**
  * Korean weight-shift captions example for sumelabs/hyperframe-kor.
  *
- * - Pretendard Hangul font
+ * - Selectable CapCut-feeling Hangul fonts (OFL matrix)
  * - Canonical ment text + STT timings
  * - Phrase grouping for readable Korean cards
+ *
+ * Usage:
+ *   node render.mjs                         # pretendard (default)
+ *   node render.mjs --font do-hyeon
+ *   node render.mjs --all                   # render full font matrix
+ *   node render.mjs --list
  */
 import { execFile } from "node:child_process";
 import {
@@ -23,14 +29,11 @@ import { promisify } from "node:util";
 const execFileAsync = promisify(execFile);
 const here = dirname(fileURLToPath(import.meta.url));
 const REPO = join(here, "../..");
-const PROJECT_DIR = join(here, ".project");
 const OUT_DIR = join(here, "out");
 const SRC = join(here, "source.mp4");
-const FONT = join(here, "fonts/PretendardVariable.woff2");
 const WORDS_PATH = join(here, "fixtures/sample-words.json");
 const COMPONENT = join(here, "components/caption-weight-shift.html");
 
-const DESIGN_FONT_SIZE = 96;
 const DESIGN_SAFE_HEIGHT = 380;
 const DESIGN_SAFE_BOTTOM = 72;
 const MAX_WORDS_PER_GROUP = 7;
@@ -52,6 +55,88 @@ const PHRASE_PLAN = [
   ["올여름엔", "프롬비가", "내", "필수템이야."],
 ];
 
+/**
+ * CapCut-feeling Hangul font matrix.
+ * `cssFamily` is the CSS font-family name injected into the patch.
+ * `projectRel` is the path under the temp project (fonts/...).
+ */
+const FONT_MATRIX = {
+  pretendard: {
+    label: "Pretendard Variable",
+    cssFamily: "Pretendard",
+    file: join(here, "fonts/PretendardVariable.woff2"),
+    projectRel: "fonts/PretendardVariable.woff2",
+    format: "woff2",
+    fontWeightRange: "100 900",
+    fontSize: 96,
+  },
+  "do-hyeon": {
+    label: "Do Hyeon",
+    cssFamily: "Do Hyeon",
+    file: join(here, "fonts/do-hyeon/DoHyeon-Regular.ttf"),
+    projectRel: "fonts/DoHyeon-Regular.ttf",
+    format: "truetype",
+    fontSize: 98,
+  },
+  "black-han-sans": {
+    label: "Black Han Sans",
+    cssFamily: "Black Han Sans",
+    file: join(here, "fonts/black-han-sans/BlackHanSans-Regular.ttf"),
+    projectRel: "fonts/BlackHanSans-Regular.ttf",
+    format: "truetype",
+    fontSize: 100,
+  },
+  jua: {
+    label: "Jua",
+    cssFamily: "Jua",
+    file: join(here, "fonts/jua/Jua-Regular.ttf"),
+    projectRel: "fonts/Jua-Regular.ttf",
+    format: "truetype",
+    fontSize: 100,
+  },
+  dunggeunmo: {
+    label: "NeoDunggeunmo",
+    cssFamily: "DungGeunMo",
+    file: join(here, "fonts/dunggeunmo/DungGeunMo.ttf"),
+    projectRel: "fonts/DungGeunMo.ttf",
+    format: "truetype",
+    // Pixel faces read small at the same CSS size.
+    fontSize: 110,
+  },
+  "nanum-pen": {
+    label: "Nanum Pen Script",
+    cssFamily: "Nanum Pen Script",
+    file: join(here, "fonts/nanum-pen/NanumPenScript-Regular.ttf"),
+    projectRel: "fonts/NanumPenScript-Regular.ttf",
+    format: "truetype",
+    // Script fonts need a bump for readable Hangul cards.
+    fontSize: 108,
+  },
+  "gowun-dodum": {
+    label: "Gowun Dodum",
+    cssFamily: "Gowun Dodum",
+    file: join(here, "fonts/gowun-dodum/GowunDodum-Regular.ttf"),
+    projectRel: "fonts/GowunDodum-Regular.ttf",
+    format: "truetype",
+    fontSize: 96,
+  },
+};
+
+function parseArgs(argv) {
+  const args = { font: "pretendard", all: false, list: false };
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (a === "--all") args.all = true;
+    else if (a === "--list") args.list = true;
+    else if (a === "--font" || a === "-f") {
+      args.font = String(argv[++i] || "").trim();
+    } else if (a === "--help" || a === "-h") {
+      args.help = true;
+    }
+  }
+  return args;
+}
+
 function resolveHyperFramesCli() {
   const fromRoot = createRequire(join(REPO, "package.json"));
   try {
@@ -60,7 +145,6 @@ function resolveHyperFramesCli() {
       "dist/cli.js",
     );
   } catch {
-    // Monorepo local CLI build
     return join(REPO, "packages/cli/dist/cli.js");
   }
 }
@@ -121,21 +205,31 @@ function buildCaptionData(words, ment, meta) {
   };
 }
 
-function patchWeightShiftHtml(html, meta) {
+function fontFaceCss(font) {
+  const weight = font.fontWeightRange
+    ? `font-weight: ${font.fontWeightRange};`
+    : "font-weight: 400;";
+  return `@font-face {
+        font-family: "${font.cssFamily}";
+        src: url("${font.projectRel}") format("${font.format}");
+        ${weight}
+        font-display: block;
+      }`;
+}
+
+function patchWeightShiftHtml(html, meta, font) {
   let out = html;
   out = out.replace(/<link[^>]*fonts\.googleapis\.com[^>]*>\s*/g, "");
   out = out.replace(/<link[^>]*fonts\.gstatic\.com[^>]*>\s*/g, "");
 
-  const face = `@font-face {
-        font-family: "Pretendard";
-        src: url("fonts/PretendardVariable.woff2") format("woff2");
-        font-weight: 100 900;
-        font-display: block;
-      }`;
+  const face = fontFaceCss(font);
+  const family = font.cssFamily;
+  const fontSize = font.fontSize;
+
   out = out.replace("<style>", `<style>\n      ${face}\n`);
-  out = out.replaceAll('"Montserrat"', '"Pretendard"');
-  out = out.replaceAll("'Montserrat'", "'Pretendard'");
-  out = out.replaceAll("px Montserrat", "px Pretendard");
+  out = out.replaceAll('"Montserrat"', `"${family}"`);
+  out = out.replaceAll("'Montserrat'", `'${family}'`);
+  out = out.replaceAll("px Montserrat", `px ${family}`);
   out = out.replace(/text-transform:\s*lowercase;?/g, "/* no lowercase */");
   out = out.replace(/lang="en"/g, 'lang="ko"');
   out = out.replace(
@@ -143,10 +237,10 @@ function patchWeightShiftHtml(html, meta) {
     "gsap.min.js",
   );
 
-  out = out.replace(/font-size:\s*72px;/g, `font-size: ${DESIGN_FONT_SIZE}px;`);
+  out = out.replace(/font-size:\s*72px;/g, `font-size: ${fontSize}px;`);
   out = out.replace(
     /CAPTION_FONT_SIZE\s*=\s*Math\.round\(72\s*\*\s*layout\.fontScale\)/g,
-    `CAPTION_FONT_SIZE = Math.round(${DESIGN_FONT_SIZE} * layout.fontScale)`,
+    `CAPTION_FONT_SIZE = Math.round(${fontSize} * layout.fontScale)`,
   );
   out = out.replace(
     /var stageHeight = Math\.round\(278 \* layout\.fontScale\);/,
@@ -286,19 +380,28 @@ function patchWeightShiftHtml(html, meta) {
   return out;
 }
 
-async function main() {
+async function renderOne(slug) {
+  const font = FONT_MATRIX[slug];
+  if (!font) {
+    throw new Error(
+      `Unknown font slug "${slug}". Use --list to see options.`,
+    );
+  }
+
   await access(SRC).catch(() => {
     throw new Error(
       `Missing ${SRC}\nCopy a talking-head MP4 to examples/ko-captions/source.mp4 first.`,
     );
   });
-  await access(FONT);
+  await access(font.file);
   await access(COMPONENT);
   await access(WORDS_PATH);
 
-  await mkdir(OUT_DIR, { recursive: true });
-  await rm(PROJECT_DIR, { recursive: true, force: true });
-  await mkdir(join(PROJECT_DIR, "fonts"), { recursive: true });
+  const projectDir = join(here, `.project-${slug}`);
+  const fontsOutDir = join(OUT_DIR, "fonts");
+  await mkdir(fontsOutDir, { recursive: true });
+  await rm(projectDir, { recursive: true, force: true });
+  await mkdir(join(projectDir, "fonts"), { recursive: true });
 
   const meta = await probe(SRC);
   const doc = JSON.parse(await readFile(WORDS_PATH, "utf8"));
@@ -307,30 +410,103 @@ async function main() {
   const captionData = buildCaptionData(words, ment, meta);
 
   let html = await readFile(COMPONENT, "utf8");
-  html = patchWeightShiftHtml(html, meta);
+  html = patchWeightShiftHtml(html, meta, font);
 
-  await copyFile(SRC, join(PROJECT_DIR, "source.mp4"));
-  await copyFile(FONT, join(PROJECT_DIR, "fonts/PretendardVariable.woff2"));
+  await copyFile(SRC, join(projectDir, "source.mp4"));
+  await copyFile(font.file, join(projectDir, font.projectRel));
   const gsap = resolveGsap();
-  if (gsap) await copyFile(gsap, join(PROJECT_DIR, "gsap.min.js"));
-  await writeFile(join(PROJECT_DIR, "caption-data.json"), JSON.stringify(captionData, null, 2));
-  await writeFile(join(PROJECT_DIR, "index.html"), html, "utf8");
+  if (gsap) await copyFile(gsap, join(projectDir, "gsap.min.js"));
   await writeFile(
-    join(PROJECT_DIR, "package.json"),
-    JSON.stringify({ name: "ko-captions-weight-shift", private: true, type: "module" }, null, 2),
+    join(projectDir, "caption-data.json"),
+    JSON.stringify(captionData, null, 2),
+  );
+  await writeFile(join(projectDir, "index.html"), html, "utf8");
+  await writeFile(
+    join(projectDir, "package.json"),
+    JSON.stringify(
+      { name: `ko-captions-${slug}`, private: true, type: "module" },
+      null,
+      2,
+    ),
   );
 
-  const outPath = join(OUT_DIR, "ko-weight-shift.mp4");
+  const outPath = join(fontsOutDir, `${slug}.mp4`);
+  // Keep legacy default path for pretendard convenience
+  const legacyPath =
+    slug === "pretendard" ? join(OUT_DIR, "ko-weight-shift.mp4") : null;
+
   const cli = resolveHyperFramesCli();
+  await access(cli).catch(() => {
+    throw new Error(
+      `Missing HyperFrames CLI at ${cli}. Run monorepo build first (packages/cli).`,
+    );
+  });
   const fps = Math.round(meta.fps) === 24 ? 24 : 30;
-  console.log("render", { meta, cli, outPath });
+  console.log("render", { slug, label: font.label, meta, cli, outPath });
   const { stdout, stderr } = await execFileAsync(
     process.execPath,
-    [cli, "render", PROJECT_DIR, "-o", outPath, "-q", "standard", "-f", String(fps)],
+    [cli, "render", projectDir, "-o", outPath, "-q", "standard", "-f", String(fps)],
     { maxBuffer: 80 * 1024 * 1024, timeout: 1000 * 60 * 12 },
   );
-  await writeFile(join(OUT_DIR, "render.log"), `${stdout}\n${stderr}`);
+  await writeFile(join(fontsOutDir, `${slug}.log`), `${stdout}\n${stderr}`);
+  if (legacyPath) await copyFile(outPath, legacyPath);
   console.log("DONE", outPath);
+  return outPath;
+}
+
+function printHelp() {
+  console.log(`Korean weight-shift caption renderer
+
+Usage:
+  node render.mjs [--font <slug>]
+  node render.mjs --all
+  node render.mjs --list
+
+Fonts:
+${Object.entries(FONT_MATRIX)
+  .map(([slug, f]) => `  ${slug.padEnd(16)} ${f.label} (size ${f.fontSize})`)
+  .join("\n")}
+`);
+}
+
+async function main() {
+  const args = parseArgs(process.argv.slice(2));
+  if (args.help) {
+    printHelp();
+    return;
+  }
+  if (args.list) {
+    for (const [slug, f] of Object.entries(FONT_MATRIX)) {
+      console.log(`${slug}\t${f.label}\t${f.file}`);
+    }
+    return;
+  }
+
+  const slugs = args.all ? Object.keys(FONT_MATRIX) : [args.font];
+  if (!args.all && !FONT_MATRIX[args.font]) {
+    throw new Error(
+      `Unknown font slug "${args.font}". Use --list to see options.`,
+    );
+  }
+
+  const results = [];
+  for (const slug of slugs) {
+    try {
+      const path = await renderOne(slug);
+      results.push({ slug, ok: true, path });
+    } catch (err) {
+      console.error(`[fail] ${slug}:`, err?.message || err);
+      results.push({ slug, ok: false, error: String(err?.message || err) });
+      if (!args.all) throw err;
+    }
+  }
+
+  console.log("\n=== font matrix summary ===");
+  for (const r of results) {
+    console.log(r.ok ? `OK  ${r.slug} -> ${r.path}` : `FAIL ${r.slug}: ${r.error}`);
+  }
+  const failed = results.filter((r) => !r.ok);
+  if (failed.length) process.exitCode = 1;
 }
 
 main().catch((e) => {

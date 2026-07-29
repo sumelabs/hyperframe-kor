@@ -17,11 +17,13 @@ This fork documents and ships a Korean-first path under `examples/ko-captions/`.
 | Piece | Choice |
 | --- | --- |
 | Style | `caption-weight-shift` (registry) |
-| Font | Pretendard Variable (or Noto Sans KR / SUIT) |
+| Font | CapCut-feeling Hangul matrix under `examples/ko-captions/fonts/` (Pretendard baseline; Do Hyeon / Black Han Sans / Jua / NeoDunggeunmo / Nanum Pen / Gowun Dodum — all OFL) |
 | Timing | STT word timestamps |
 | On-screen text | Canonical ment (not raw STT strings) |
 | Grouping | Phrase plan / sticky idioms |
 | Aspect | 9:16 portrait |
+
+Render a single face with `node examples/ko-captions/render.mjs --font do-hyeon`, or the full matrix with `--all`. Outputs go to `examples/ko-captions/out/fonts/<slug>.mp4`.
 
 ## Ment vs STT
 

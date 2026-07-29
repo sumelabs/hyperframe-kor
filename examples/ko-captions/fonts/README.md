@@ -1,8 +1,20 @@
-# Pretendard Variable
+# Hangul caption fonts (OFL / free redistributable)
 
-Bundled for Hangul caption demos.
+Bundled for CapCut-feeling Korean short-form weight-shift caption demos.
+All families below are SIL Open Font License 1.1 (or Pretendard OFL) and safe to
+redistribute with this fork. No CapCut-exclusive / paid fonts.
 
-- Upstream: https://github.com/orioncactus/pretendard
-- License: SIL Open Font License 1.1
+| Slug             | Family                     | Feel                         | Files                      |
+| ---------------- | -------------------------- | ---------------------------- | -------------------------- |
+| `pretendard`     | Pretendard Variable        | Clean baseline UI            | `PretendardVariable.woff2` |
+| `do-hyeon`       | Do Hyeon                   | Thick rounded CapCut classic | `do-hyeon/`                |
+| `black-han-sans` | Black Han Sans             | Impact / slam                | `black-han-sans/`          |
+| `jua`            | Jua                        | Soft cute rounded            | `jua/`                     |
+| `dunggeunmo`     | NeoDunggeunmo (DungGeunMo) | Pixel / retro                | `dunggeunmo/`              |
+| `nanum-pen`      | Nanum Pen Script           | Handwritten                  | `nanum-pen/`               |
+| `gowun-dodum`    | Gowun Dodum                | Soft editorial               | `gowun-dodum/`             |
 
-Do not replace with Latin-only display fonts (Anton, Montserrat, etc.) for Korean text — they tofu Hangul glyphs.
+Each family folder has `OFL.txt` (or see Pretendard note below) plus a short `README.md`.
+
+Do not replace these with Latin-only display fonts (Anton, Montserrat, etc.) —
+they tofu Hangul glyphs.

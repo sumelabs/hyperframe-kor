@@ -103,6 +103,7 @@ examples/*
 examples/gcp-cloud-run/scripts/gcp-smoke-artifacts/
 examples/ko-captions/source.mp4
 examples/ko-captions/.project/
+examples/ko-captions/.project-*/
 examples/ko-captions/out/
 packages/studio/data/
 

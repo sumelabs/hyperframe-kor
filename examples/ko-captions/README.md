@@ -17,7 +17,9 @@ examples/ko-captions/
   components/caption-weight-shift.html   # upstream registry component (patched at render time)
   fixtures/sample-words.json             # example ment + word timings
   fonts/                                 # Pretendard + CapCut-vibe Hangul families (OFL)
-  render.mjs                             # patch + hyperframes render (--font / --all)
+  render.mjs                             # weight-shift × font matrix
+  render-style-matrix.mjs                # style × font matrix (black-outline, highlight, …)
+  CAPTION-STYLE-INVENTORY.md             # which registry styles are karaoke / line-by-line
   README.md
 ```
 
@@ -67,6 +69,42 @@ Outputs:
 - Legacy convenience copy for Pretendard: `examples/ko-captions/out/ko-weight-shift.mp4`
 
 `source.mp4`, `.project*/`, and `out/` are gitignored — keep renders local.
+
+## Style × font matrix
+
+Compare CapCut-ish animations beyond weight-shift (phrase plan + ment preserved):
+
+| Style                | Feel                                                            |
+| -------------------- | --------------------------------------------------------------- |
+| `black-outline`      | White fill + thick black outline + soft shadow (CapCut classic) |
+| `highlight`          | TikTok red word sweep on phrase cards                           |
+| `pill-karaoke`       | Pill karaoke                                                    |
+| `clip-wipe`          | Phrase wipe reveal                                              |
+| `editorial-emphasis` | Line/block emphasis                                             |
+
+```bash
+# CapCut outline fonts first
+node examples/ko-captions/render-style-matrix.mjs --priority --copy-experiment
+
+# Full default matrix (~15)
+node examples/ko-captions/render-style-matrix.mjs --all --copy-experiment --skip-existing
+
+node examples/ko-captions/render-style-matrix.mjs --style black-outline --font jua
+node examples/ko-captions/render-style-matrix.mjs --list
+```
+
+Outputs: `examples/ko-captions/out/matrix/<style>--<font>.mp4`
+
+Local review gallery (experiment tmp, not in this repo):
+
+`sume-com/tmp/fal-replay-9a5dc677/reels-org-v6-v3calm/hf-captions/review/index.html`
+
+```bash
+cd …/hf-captions && python3 -m http.server 8765
+# → http://127.0.0.1:8765/review/
+```
+
+See [`CAPTION-STYLE-INVENTORY.md`](./CAPTION-STYLE-INVENTORY.md) for the full registry inventory.
 
 ## Ment + STT contract
 

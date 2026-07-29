@@ -418,30 +418,24 @@ function injectCommonHangulPatches(html, meta, font, baseFonts) {
   return out;
 }
 
-/** CapCut white fill + thick black outline only (no soft blur halo). */
+/** CapCut white fill + hard black stroke only (no soft blur / drop shadow). */
 const CAPCUT_OUTLINE_CSS = `
       .caption-line,
       .caption-line span {
         color: #ffffff !important;
         font-weight: 700 !important;
-        -webkit-text-stroke: 3px #000000;
+        /* Stroke-only outline — text-shadow halo removed (was the soft black blur) */
+        -webkit-text-stroke: 5px #000000;
         paint-order: stroke fill;
-        /* Hard outline only — no soft black glow/blur behind text */
-        text-shadow:
-          -3px -3px 0 #000,
-          -3px 0 0 #000,
-          -3px 3px 0 #000,
-          0 -3px 0 #000,
-          0 3px 0 #000,
-          3px -3px 0 #000,
-          3px 0 0 #000,
-          3px 3px 0 #000 !important;
+        text-shadow: none !important;
+        filter: none !important;
       }
       .caption-line {
         /* Room so stroke is not clipped at line ends */
-        padding: 10px 14px !important;
-        box-sizing: border-box !important;
+        padding: 12px 18px !important;
+        box-sizing: content-box !important;
         overflow: visible !important;
+        max-width: none !important;
       }
 `;
 
@@ -639,15 +633,26 @@ function patchBlackOutline(html, meta, font) {
   const safeDesignW = 1560;
   const lineInsetDesign = 140; // side pad + stroke + line padding so ends never clip
 
+  // Kill upstream soft shadow before our outline CSS
+  out = out.replace(
+    /text-shadow:\s*0 2px 4px rgba\(0,\s*0,\s*0,\s*0\.3\);/g,
+    "text-shadow: none;",
+  );
+  out = out.replace(
+    /#black-outline\s*\{([^}]*)overflow:\s*hidden;/,
+    "#black-outline {$1overflow: visible;",
+  );
+
   out = out.replace(
     "</style>",
     `${CAPCUT_OUTLINE_CSS}
-      /* black-outline: centered, mid-frame; overflow visible so stroke isn't clipped */
+      /* black-outline: centered, mid-frame; never clip stroke */
       #black-outline,
       .caption-layer,
       .safe-zone,
       .caption-group,
-      .caption-copy {
+      .caption-copy,
+      .caption-line {
         overflow: visible !important;
       }
       .safe-zone {
@@ -656,18 +661,19 @@ function patchBlackOutline(html, meta, font) {
         left: 50% !important;
         transform: translate(-50%, -50%) !important;
         width: ${safeDesignW}px !important;
-        height: 200px !important;
+        height: 220px !important;
       }
       .caption-group {
         width: ${safeDesignW}px !important;
-        height: 200px !important;
+        height: 220px !important;
       }
-      .caption-copy,
-      .caption-line {
+      .caption-copy {
         max-width: ${safeDesignW}px !important;
+        overflow: visible !important;
       }
       .caption-line {
         font-size: ${BLACK_OUTLINE_FONT_SIZE}px !important;
+        max-width: none !important;
       }
     </style>`,
   );
@@ -737,11 +743,16 @@ function patchBlackOutline(html, meta, font) {
     /var computedSize = fitFontSize\(\s*widestLineText,\s*CAPTION_FONT_SIZE,\s*"700",\s*"[^"]+",\s*MAX_LINE_WIDTH,\s*\);/,
     "var computedSize = CAPTION_FONT_SIZE;",
   );
+  // Do not clamp line width — that was clipping the black stroke at the ends
+  out = out.replace(
+    /lineEl\.style\.maxWidth = SAFE_ZONE_WIDTH \+ "px";/g,
+    'lineEl.style.maxWidth = "none";',
+  );
 
   // Stage: padded width + mid-frame. Set measure font BEFORE makeGroups.
   out = out.replace(
     /var stageHeight = Math\.round\(380 \* layout\.fontScale\);/,
-    "var stageHeight = Math.round(200 * layout.fontScale);",
+    "var stageHeight = Math.round(220 * layout.fontScale);",
   );
   out = out.replace(
     /SAFE_ZONE_WIDTH = Math\.round\(1400 \* layout\.scaleX\);/,

@@ -65,6 +65,23 @@ const PHRASE_PLAN = [
   ["올여름엔", "프롬비가", "내", "필수템이야."],
 ];
 
+/**
+ * Longer one-liners for CapCut black-outline (merged phrases).
+ * Keep product name / idiom sticky; do not auto-shrink per card.
+ */
+const BLACK_OUTLINE_PHRASE_PLAN = [
+  ["요즘", "바깥", "나가면", "진짜", "숨이", "턱", "막히지", "않아?"],
+  ["땀", "나고,", "머리", "뜨겁고,", "기분까지", "예민해지잖아."],
+  ["그래서", "내가", "프롬비", "포켓", "제트", "들고", "다니는데,"],
+  ["이게", "생각보다", "완전", "달라."],
+  ["립밤만한", "크기인데", "바람은", "세고,", "가방에", "넣어도", "짐이", "안", "돼."],
+  ["더울", "때", "얼굴에", "대고", "있으면", "진짜", "살", "것", "같아."],
+  ["올여름엔", "프롬비가", "내", "필수템이야."],
+];
+
+/** Fixed px for all black-outline fonts — never fit-shrink per group. */
+const BLACK_OUTLINE_FONT_SIZE = 64;
+
 /** CapCut-feeling Hangul fonts (subset of render.mjs). */
 const FONT_MATRIX = {
   pretendard: {
@@ -592,13 +609,12 @@ function patchWeightShiftBase(html, meta, font) {
 }
 
 function patchBlackOutline(html, meta, font) {
-  // Smaller face so each phrase stays one line; layout centered horizontally,
-  // vertically ~midway between bottom-third (old) and true center (~64% from top).
-  const singleLineFont = Math.round(font.fontSize * 0.68);
-  const slimFont = { ...font, fontSize: singleLineFont };
+  // Same fixed size for every font / every card. Longer phrase cards.
+  // Vertically ~midway between former bottom-third and true center (~64%).
+  const slimFont = { ...font, fontSize: BLACK_OUTLINE_FONT_SIZE };
   let out = patchWeightShiftBase(html, meta, slimFont);
 
-  // CapCut outline look + centered single-line stage
+  // CapCut outline look + centered single-line stage (wide enough for longer lines)
   out = out.replace(
     "</style>",
     `${CAPCUT_OUTLINE_CSS}
@@ -608,10 +624,19 @@ function patchBlackOutline(html, meta, font) {
         top: 64% !important;
         left: 50% !important;
         transform: translate(-50%, -50%) !important;
+        width: 1840px !important;
         height: 160px !important;
       }
       .caption-group {
+        width: 1840px !important;
         height: 160px !important;
+      }
+      .caption-copy,
+      .caption-line {
+        max-width: 1840px !important;
+      }
+      .caption-line {
+        font-size: ${BLACK_OUTLINE_FONT_SIZE}px !important;
       }
     </style>`,
   );
@@ -623,7 +648,6 @@ function patchBlackOutline(html, meta, font) {
           return [{ words: words, startIndex: 0 }];
         }`,
   );
-  // Fallback if the injected splitLines shape differs
   if (!out.includes("return [{ words: words, startIndex: 0 }];")) {
     out = out.replace(
       /function splitLines\(words\) \{[\s\S]*?\n        \}/,
@@ -633,10 +657,52 @@ function patchBlackOutline(html, meta, font) {
     );
   }
 
-  // Stage position/size in hfBuild
+  // Longer phrase groups (override short PHRASE_PLAN from patchWeightShiftBase)
+  const longPlanJson = JSON.stringify(BLACK_OUTLINE_PHRASE_PLAN);
+  out = out.replace(
+    /function makeGroups\(words\) \{[\s\S]*?return groups;\n        \}/,
+    `function makeGroups(words) {
+          var plan = ${longPlanJson};
+          var groups = [];
+          var cursor = 0;
+          plan.forEach(function (phrase) {
+            var slice = words.slice(cursor, cursor + phrase.length);
+            if (slice.length !== phrase.length) return;
+            for (var i = 0; i < phrase.length; i++) {
+              if (slice[i].text !== phrase[i]) return;
+            }
+            groups.push(makeGroup(slice));
+            cursor += phrase.length;
+          });
+          while (cursor < words.length) {
+            var chunk = words.slice(cursor, cursor + 8);
+            groups.push(makeGroup(chunk));
+            cursor += chunk.length;
+          }
+          return groups;
+        }`,
+  );
+
+  // Never shrink per card — constant font size
+  out = out.replace(
+    /function fitFontSize\(text, baseFontSize, fontWeight, fontFamily, maxWidth\) \{[\s\S]*?return minSize;\n        \}/,
+    `function fitFontSize(text, baseFontSize, fontWeight, fontFamily, maxWidth) {
+          return baseFontSize;
+        }`,
+  );
+  out = out.replace(
+    /var computedSize = fitFontSize\(\s*widestLineText,\s*CAPTION_FONT_SIZE,\s*"700",\s*"[^"]+",\s*MAX_LINE_WIDTH,\s*\);/,
+    "var computedSize = CAPTION_FONT_SIZE;",
+  );
+
+  // Stage position/size + wide line box in hfBuild
   out = out.replace(
     /var stageHeight = Math\.round\(380 \* layout\.fontScale\);/,
     "var stageHeight = Math.round(160 * layout.fontScale);",
+  );
+  out = out.replace(
+    /SAFE_ZONE_WIDTH = Math\.round\(1400 \* layout\.scaleX\);/,
+    "SAFE_ZONE_WIDTH = Math.round(1840 * layout.scaleX);",
   );
   out = out.replace(
     /stage\.style\.bottom = Math\.round\(72 \* layout\.scaleY\) \+ "px";/,
@@ -644,6 +710,11 @@ function patchBlackOutline(html, meta, font) {
           stage.style.top = "64%";
           stage.style.left = "50%";
           stage.style.transform = "translate(-50%, -50%)";`,
+  );
+  // Pin CAPTION_FONT_SIZE to fixed design px (ignore per-font matrix sizes)
+  out = out.replace(
+    /CAPTION_FONT_SIZE = Math\.round\(\d+ \* layout\.fontScale\);/,
+    `CAPTION_FONT_SIZE = Math.round(${BLACK_OUTLINE_FONT_SIZE} * layout.fontScale);`,
   );
 
   // Force bold; skip weight-shift animation (single-weight Hangul faces)

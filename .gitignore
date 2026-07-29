@@ -97,8 +97,13 @@ examples/*
 !examples/k8s-jobs/**
 !examples/gcp-cloud-run
 !examples/gcp-cloud-run/**
+!examples/ko-captions
+!examples/ko-captions/**
 # …but never the local smoke run's build/render artifacts.
 examples/gcp-cloud-run/scripts/gcp-smoke-artifacts/
+examples/ko-captions/source.mp4
+examples/ko-captions/.project/
+examples/ko-captions/out/
 packages/studio/data/
 
 .desloppify/
